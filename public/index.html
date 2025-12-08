@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pinterval</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div id="app" class="layout">
+    <!-- 左カラム -->
+    <aside class="col left" id="left-col">
+      <h1 class="app-title">Pinterval</h1>
+
+      <div class="field">
+        <label for="theme">テーマ（Pinterest検索ワード）</label>
+        <input id="theme" type="text" placeholder="例）風景, cat, architecture">
+      </div>
+
+      <div class="field">
+        <label for="interval">表示間隔（秒）</label>
+        <select id="interval">
+          <option>10</option>
+          <option>15</option>
+          <option>20</option>
+          <option>30</option>
+          <option>40</option>
+          <option>50</option>
+          <option>60</option>
+          <option>90</option>
+          <option>120</option>
+          <option>180</option>
+        </select>
+      </div>
+
+      <div class="field readonly">
+        <label>表示回数</label>
+        <div id="counter" class="counter">0</div>
+      </div>
+
+      <div class="field">
+        <button id="btn-search" class="btn primary">検索して準備</button>
+      </div>
+
+      <p class="note">※ プレイ中は左カラムの操作は無効化されます。</p>
+    </aside>
+
+    <!-- 中央カラム（ビューワ） -->
+    <main class="col center">
+      <div id="viewer" class="viewer">
+        <img id="viewer-img" alt="表示中の画像">
+        <div class="controls" id="controls">
+          <button id="btn-play" class="ctrl" title="再生/一時停止">⏯</button>
+          <button id="btn-stop" class="ctrl" title="停止">⏹</button>
+          <button id="btn-next" class="ctrl" title="次へ">⏭</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- 右カラム -->
+    <aside class="col right">
+      <div class="countdown-wrap">
+        <div class="countdown-label">次の画像まで</div>
+        <div id="countdown" class="countdown">00:00</div>
+      </div>
+
+      <div class="history">
+        <div class="history-head">
+          <span>履歴</span>
+          <span id="history-count" class="badge">0</span>
+        </div>
+        <div id="thumbs" class="thumbs"></div>
+      </div>
+    </aside>
+  </div>
+
+  <script type="module" src="./eventBus.js"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
