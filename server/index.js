@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { fetch } from 'undici';   // ← これが最重要（安定版 fetch）
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,10 +53,9 @@ app.get('/auth/callback', async (req, res) => {
   }
 
   try {
-    // MUST: x-www-form-urlencoded で送る
     const body = new URLSearchParams({
       grant_type: 'authorization_code',
-      code: code,
+      code,
       client_id: CLIENT_ID,
       client_secret: CLIENT_SECRET,
       redirect_uri: REDIRECT_URI
@@ -67,7 +67,7 @@ app.get('/auth/callback', async (req, res) => {
         "Content-Type": "application/x-www-form-urlencoded",
         "Accept": "application/json"
       },
-      body: body.toString()  // ← これが最も重要！
+      body: body.toString() // ← 超重要（文字列）
     });
 
     const json = await tokenRes.json();
@@ -77,7 +77,6 @@ app.get('/auth/callback', async (req, res) => {
       return res.status(500).json(json);
     }
 
-    // ここで token を保存
     dynamicAccessToken = json.access_token;
 
     return res.send(`
