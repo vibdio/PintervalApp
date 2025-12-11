@@ -1,12 +1,12 @@
 import { bus } from './eventBus.js';
 
 const dom = {
-  theme: document.getElementById('theme'),
+  // theme: document.getElementById('theme'),
   board: document.getElementById('board'),
   order: document.getElementById('order'),
   interval: document.getElementById('interval'),
   counter: document.getElementById('counter'),
-  btnSearch: document.getElementById('btn-search'),
+  // btnSearch: document.getElementById('btn-search'),
   viewer: document.getElementById('viewer'),
   img: document.getElementById('viewer-img'),
   btnPlay: document.getElementById('btn-play'),
@@ -57,11 +57,9 @@ const state = {
 const INTERVAL_OPTIONS = [10,15,20,30,40,50,60,90,120,180];
 
 function setLeftDisabled(disabled) {
-  if (dom.theme) dom.theme.disabled = disabled;
   if (dom.board) dom.board.disabled = disabled;
   if (dom.order) dom.order.disabled = disabled;
   if (dom.interval) dom.interval.disabled = disabled;
-  if (dom.btnSearch) dom.btnSearch.disabled = disabled;
 }
 
 function ms(val) { return Math.max(0, Number(val) || 0) * 1000; }
@@ -201,78 +199,11 @@ function showNext(resetCountdown) {
   }
 }
 
-async function runSearch() {
-  const q = dom.theme.value.trim();
-  if (!q) {
-    alert('テーマを入力してください。');
-    return;
-  }
-  // Use eventBus emitSwitch with lockKey 'search'
-  await bus.emitSwitch('search:run', { query: q }, { lockKey: 'search' });
-}
+// テーマ検索機能は廃止
 
-// Register event handlers per 開発方針
-bus.on('search:run', async (payload, ctx) => {
-  // pre: validate
-}, { phase: 'pre', priority: 10 });
-
-bus.on('search:run', async (payload, ctx) => {
-  // main: fetch 自分のピンから取得し、テーマと表示モードで整列
-  const q = payload.query.trim();
-  const controller = new AbortController();
-  ctx.signal.addEventListener('abort', () => controller.abort(), { once: true });
-
-  // どのエンドポイントを叩くか決定
-  const boardVal = dom.board ? dom.board.value : 'all';
-  let url = '';
-  if (!boardVal || boardVal === 'all') {
-    url = '/api/me/pins?limit=120';
-  } else {
-    url = `/api/boards/${encodeURIComponent(boardVal)}/pins?limit=120`;
-  }
-
-  const res = await fetch(url, { signal: controller.signal });
-  if (!res.ok) throw new Error('ピンの取得に失敗しました。');
-  const data = await res.json();
-  let items = Array.isArray(data.items) ? data.items : [];
-
-  // テーマでフィルタ（タイトルに含まれるもの）
-  if (q) {
-    const lower = q.toLowerCase();
-    items = items.filter((p) => {
-      const title = (p.title || '').toLowerCase();
-      return title.includes(lower);
-    });
-  }
-
-  // 表示モードに応じて並び替え
-  const order = dom.order ? dom.order.value : 'newest';
-  if (order === 'oldest') {
-    items = items.slice().reverse();
-  } else if (order === 'random') {
-    items = shuffleArray(items);
-  }
-
-  state.items = items;
-  state.idx = -1;
-  state.history = [];
-  saveHistoryToStorage(state.history);
-  state.shownCount = 0;
-}, { phase: 'main', priority: 0 });
-
-bus.on('search:run', async (payload, ctx) => {
-  // post: UI update
-  dom.counter.textContent = '0';
-  renderHistory();
-  if (state.items.length) {
-    showNext(false);
-  } else {
-    alert('画像が見つかりませんでした。');
-  }
-}, { phase: 'post', priority: 0 });
+// テーマ検索関連イベントは廃止
 
 // Play controls
-dom.btnSearch.addEventListener('click', runSearch);
 dom.btnPlay.addEventListener('click', () => {
   if (state.mode === 'play') {
     pausePlay(); // 一時停止
