@@ -199,18 +199,24 @@ function enterStandby() {
 
 function enterPlay() {
   if (!state.items.length) return;
+
   state.mode = 'play';
   setLeftDisabled(true);
 
-  const totalMs = ms(dom.interval ? dom.interval.value : 30);
+  // ★ 最初の再生でも確実にセットする
+  const totalMs = ms(dom.interval?.value || 30);
   state.remainMs = totalMs;
-  if (dom.countdown) dom.countdown.textContent = formatMMSS(state.remainMs);
+  if (dom.countdown)
+    dom.countdown.textContent = formatMMSS(state.remainMs);
 
+  // タイマー初期化
   if (state.timerId != null) {
     clearInterval(state.timerId);
   }
+
   state.timerId = window.setInterval(() => {
     state.remainMs -= 1000;
+
     if (state.remainMs <= 0) {
       showNext(true);
     } else if (dom.countdown) {
@@ -218,6 +224,7 @@ function enterPlay() {
     }
   }, 1000);
 }
+
 
 function pausePlay() {
   if (state.timerId != null) {
@@ -303,22 +310,22 @@ if (dom.btnSearch) {
 }
 
 if (dom.btnPlay) {
-  dom.btnPlay.addEventListener('click', () => {
+  dom.btnPlay.addEventListener('click', async () => {
     if (state.mode === 'play') {
       pausePlay();
-    } else {
-      if (!state.items.length) {
-        // まだ準備されていない場合は自動で取得 → 再生
-        prepareAndPreview().then(() => {
-          if (state.items.length) {
-            enterPlay();
-          }
-        });
-      } else {
-        enterPlay();
-      }
+      return;
+    }
+
+    // 初回再生で items が無ければ自動準備
+    if (!state.items.length) {
+      await prepareAndPreview();
+    }
+
+    if (state.items.length) {
+      enterPlay();  // ★ここで確実にカウントダウン開始
     }
   });
+
 }
 
 if (dom.btnStop) {
