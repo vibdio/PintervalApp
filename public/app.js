@@ -34,7 +34,7 @@ function loadHistoryFromStorage() {
     return [];
   }
 }
-
+// 不要な閉じ括弧を削除
 function saveHistoryToStorage(history) {
   try {
     const payload = Array.isArray(history) ? history.slice(-500) : [];
@@ -107,8 +107,6 @@ async function loadBoards() {
   } catch (e) {
     console.warn('Failed to load boards', e);
   }
-}
-
 }
 
 function renderViewer() {
