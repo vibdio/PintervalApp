@@ -49,42 +49,57 @@ app.get('/auth/login', (req, res) => {
 app.get('/auth/callback', async (req, res) => {
   const code = req.query.code;
 
+  console.log("▼ Received OAuth code:", code);
+
   if (!code) {
-    return res.status(400).send('Missing authorization code');
+    return res.status(400).send("Missing authorization code");
   }
 
   try {
-    const params = new URLSearchParams();
-    params.append("grant_type", "authorization_code");
-    params.append("code", code);
-    params.append("client_id", CLIENT_ID);
-    params.append("client_secret", CLIENT_SECRET);
-    params.append("redirect_uri", REDIRECT_URI);
+    const params = new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      redirect_uri: REDIRECT_URI
+    });
+
+    console.log("▼ Sending token request body:", params.toString());
 
     const tokenRes = await fetch("https://api.pinterest.com/v5/oauth/token", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json"
       },
       body: params.toString()
     });
 
-    const data = await tokenRes.json();
+    const text = await tokenRes.text(); // ← JSON でなく raw で取得
+    console.log("▼ Pinterest raw response:", text);
+    console.log("▼ Status:", tokenRes.status);
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { parseError: true, raw: text };
+    }
 
     if (!tokenRes.ok) {
-      console.error("Pinterest token error:", data);
-      return res.status(500).json(data);
+      console.error("▼ Pinterest token error (parsed):", data);
+      return res.status(500).send(text);
     }
 
     dynamicAccessToken = data.access_token;
 
     return res.send(`
-      <h1>Pinterest Access Token を取得しました！</h1>
-      <p><a href="/">戻る</a></p>
+      <h1>Access Token Get!</h1>
+      <p>${data.access_token}</p>
     `);
 
   } catch (err) {
-    console.error("OAuth callback error:", err);
+    console.error("▼ OAuth callback fatal error:", err);
     res.status(500).send("OAuth callback failed");
   }
 });
