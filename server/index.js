@@ -153,7 +153,9 @@ function normalizePinsFromPinterest(json) {
       };
     })
     .filter((p) => !!p.image);
+}
 
+  
 /* ============================================================
    /api/me/boards - ユーザーのボード一覧
 ============================================================ */
@@ -301,7 +303,7 @@ app.get('/api/boards/:boardId/pins', async (req, res) => {
   }
 });
 
-}
+
 
 /* ============================================================
    /api/search (Pinterest API v5)
