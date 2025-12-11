@@ -34,28 +34,42 @@ input:disabled,select:disabled{opacity:0.6}
 .btn:disabled{opacity:0.6;cursor:not-allowed}
 .note{color:var(--muted);font-size:12px}
 
-.viewer{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#0b0d12}
-.viewer img{max-width:100%;max-height:100%;object-fit:contain;display:block}
-
-#viewer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  width: 100%;
-
-  /* 背景色があると画像サイズ調整が分かりやすい場合 */
-  background-color: #000;
-  overflow: hidden;
+/* ======================================================
+   ★ 中央カラム（viewer）を最大化する調整
+   高さを圧迫しないように .col.center の overflow を hidden に変更
+====================================================== */
+.col.center{
+  overflow:hidden; /* ← 中央のスクロールを無効化して viewer を広げる */
+  display:flex;
+  flex-direction:column;
 }
 
-#viewer-img {
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
-  object-fit: contain;
-  display: block;
+/* ======================================================
+   ★ ビューワ（画像エリア）の改善
+   ・flex:1 を追加 → 中央カラムの残り全てを占有
+   ・height:100% のままだと親に依存するので明確に伸ばす
+====================================================== */
+.viewer{
+  position:relative;
+  width:100%;
+  flex:1;              /* ← これにより viewer が縦方向最大化される */
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#0b0d12;
+  overflow:hidden;
+}
+
+/* ======================================================
+   ★ 画像フィット（すでに良いが念のため補強）
+====================================================== */
+.viewer img{
+  max-width:100%;
+  max-height:100%;
+  width:auto;
+  height:auto;
+  object-fit:contain;
+  display:block;
 }
 
 .controls{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);display:flex;gap:14px;opacity:0;transition:opacity .2s ease}
