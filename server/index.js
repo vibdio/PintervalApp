@@ -113,27 +113,55 @@ async function fetchWithTimeout(url, opt = {}) {
   }
 }
 
+function pickLargestImageUrl(map) {
+  if (!map || typeof map !== "object") return null;
+
+  // 1) 明示的な orig があれば最優先
+  if (map.orig?.url) return map.orig.url;
+
+  // 2) "1200x", "1000x1500" など、数値付きキーの中から最も大きいものを選ぶ
+  let bestUrl = null;
+  let bestPixels = -1;
+
+  for (const [key, value] of Object.entries(map)) {
+    if (!value?.url) continue;
+
+    const m = key.match(/^(\d+)[xX](\d+)?/);
+    if (m) {
+      const w = parseInt(m[1], 10);
+      const h = m[2] ? parseInt(m[2], 10) : w;
+      const pixels = w * h;
+      if (pixels > bestPixels) {
+        bestPixels = pixels;
+        bestUrl = value.url;
+      }
+    }
+  }
+
+  if (bestUrl) return bestUrl;
+
+  // 3) パターンに合わない場合は、最初に見つかった URL を返す
+  for (const v of Object.values(map)) {
+    if (v?.url) return v.url;
+  }
+
+  return null;
+}
+
 function pickImageUrlFromPin(pin) {
   if (!pin || typeof pin !== "object") return null;
 
+  // v5 の公式スキーマ: pin.media.images
   const mediaImages = pin.media?.images;
-  if (mediaImages) {
-    for (const v of Object.values(mediaImages)) {
-      if (v?.url) return v.url;
-    }
-  }
+  const fromMedia = pickLargestImageUrl(mediaImages);
+  if (fromMedia) return fromMedia;
 
+  // 互換用: pin.images
   const images = pin.images;
-  if (images) {
-    const preferred = ['orig','1200x','1000x','800x','600x','400x','236x','150x150'];
-    for (const key of preferred) {
-      if (images[key]?.url) return images[key].url;
-    }
-    for (const v of Object.values(images)) {
-      if (v?.url) return v.url;
-    }
-  }
+  const fromImages = pickLargestImageUrl(images);
+  if (fromImages) return fromImages;
 
+  // それでも無ければ、素の image_url / thumbnail_url を使う
   if (pin.image_url) return pin.image_url;
   if (pin.thumbnail_url) return pin.thumbnail_url;
 
@@ -154,6 +182,7 @@ function normalizePinsFromPinterest(json) {
     })
     .filter((p) => !!p.image);
 }
+
 
   
 /* ============================================================
