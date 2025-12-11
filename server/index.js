@@ -53,43 +53,41 @@ app.get('/auth/callback', async (req, res) => {
   }
 
   try {
-    const body = new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      redirect_uri: REDIRECT_URI
-    });
+    const params = new URLSearchParams();
+    params.append("grant_type", "authorization_code");
+    params.append("code", code);
+    params.append("client_id", CLIENT_ID);
+    params.append("client_secret", CLIENT_SECRET);
+    params.append("redirect_uri", REDIRECT_URI);
 
-    const tokenRes = await fetch('https://api.pinterest.com/v5/oauth/token', {
-      method: 'POST',
+    const tokenRes = await fetch("https://api.pinterest.com/v5/oauth/token", {
+      method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
-        "Accept": "application/json"
       },
-      body: body.toString() // ← 超重要（文字列）
+      body: params.toString()
     });
 
-    const json = await tokenRes.json();
+    const data = await tokenRes.json();
 
     if (!tokenRes.ok) {
-      console.error("Pinterest token error:", json);
-      return res.status(500).json(json);
+      console.error("Pinterest token error:", data);
+      return res.status(500).json(data);
     }
 
-    dynamicAccessToken = json.access_token;
+    dynamicAccessToken = data.access_token;
 
     return res.send(`
       <h1>Pinterest Access Token を取得しました！</h1>
-      <p>このトークンで検索APIが動作します。</p>
       <p><a href="/">戻る</a></p>
     `);
 
   } catch (err) {
     console.error("OAuth callback error:", err);
-    return res.status(500).send("OAuth callback failed.");
+    res.status(500).send("OAuth callback failed");
   }
 });
+
 
 /* ============================================================
    Utility functions
