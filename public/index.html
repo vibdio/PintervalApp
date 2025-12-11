@@ -14,12 +14,6 @@
       <h1 class="app-title">Pinterval</h1>
 
       <div class="field">
-        <label for="theme">テーマ（Pinterest検索ワード）</label>
-        <input id="theme" type="text" placeholder="例）風景, cat, architecture">
-        </div>
-        <!-- テーマ検索機能は廃止 -->
-
-      <div class="field">
         <label for="board">ボード</label>
         <select id="board">
           <option value="all">すべてのピン</option>
@@ -74,14 +68,14 @@
           <button id="btn-next" class="ctrl" title="次へ">⏭</button>
         </div>
       </div>
-        <div class="field">
-          <!-- 検索ボタンも廃止 -->
-        </div>
-      <div class="countdown-wrap">
+    </main>
+
+    <!-- ★★★ ここから右カラム ★★★ -->
+    <aside class="col right">
+            <div class="countdown-wrap">
         <div class="countdown-label">次の画像まで</div>
         <div id="countdown" class="countdown">00:00</div>
       </div>
-
       <div class="history">
         <div class="history-head">
           <span>履歴</span>
@@ -90,7 +84,7 @@
         <div id="thumbs" class="thumbs"></div>
       </div>
     </aside>
-  </div>
+
 
   <script type="module" src="./eventBus.js"></script>
   <script type="module" src="./app.js"></script>

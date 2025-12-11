@@ -113,27 +113,61 @@ async function fetchWithTimeout(url, opt = {}) {
   }
 }
 
+function pickBestImageVariant(images) {
+  if (!images || typeof images !== "object") return null;
+
+  let bestUrl = null;
+  let bestScore = -1;
+
+  for (const [key, value] of Object.entries(images)) {
+    if (!value || !value.url) continue;
+
+    let score = 0;
+    const w = typeof value.width === "number" ? value.width : null;
+    const h = typeof value.height === "number" ? value.height : null;
+
+    if (w && h) {
+      // width/height がある場合は解像度で評価
+      score = w * h;
+    } else {
+      // フィールドに width/height が無い場合、キー名から数値を推測（例: "orig", "1200x", "600x900"）
+      const m = String(key).match(/(\d+)/);
+      if (m) {
+        score = parseInt(m[1], 10);
+      } else {
+        // 数字が取れないもの（"orig" など）は適度に高めのスコアを与える
+        score = 999999;
+      }
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestUrl = value.url;
+    }
+  }
+
+  return bestUrl;
+}
+
 function pickImageUrlFromPin(pin) {
   if (!pin || typeof pin !== "object") return null;
 
+  // Pinterest API v5 の仕様上、media.images に複数バリアントが入るため
+  // その中から「一番大きいもの」を選ぶ。
   const mediaImages = pin.media?.images;
   if (mediaImages) {
-    for (const v of Object.values(mediaImages)) {
-      if (v?.url) return v.url;
-    }
+    const best = pickBestImageVariant(mediaImages);
+    if (best) return best;
   }
 
+  // 古い形式 / 互換フィールド images に対しても同様のロジックを適用
   const images = pin.images;
   if (images) {
-    const preferred = ['orig','1200x','1000x','800x','600x','400x','236x','150x150'];
-    for (const key of preferred) {
-      if (images[key]?.url) return images[key].url;
-    }
-    for (const v of Object.values(images)) {
-      if (v?.url) return v.url;
-    }
+    const best = pickBestImageVariant(images);
+    if (best) return best;
   }
 
+  // フォールバック
   if (pin.image_url) return pin.image_url;
   if (pin.thumbnail_url) return pin.thumbnail_url;
 
