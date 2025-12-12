@@ -359,3 +359,5 @@ loadBoards();
 
 // Optional: expose for debugging
 window.__PINTERVAL_STATE__ = state;
+
+document.getElementById('loginBtn')?.addEventListener('click',()=>{window.location.href='https://pinterval.onrender.com/auth/login';});
