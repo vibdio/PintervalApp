@@ -71,17 +71,6 @@ function formatMMSS(msVal) {
   return `${mm}:${ss}`;
 }
 
-// ---- gap (interval) countdown UI ----
-function showGapCountdown() {
-  const el = dom.gapCountdown;
-  if (!el) return;
-  const n = Math.max(1, Math.ceil(state.remainMs / 1000));
-  el.textContent = String(n);
-  el.hidden = false;
-  // インターバル中は画像を一切表示しない
-  if (dom.img) dom.img.hidden = true;
-}
-
 function hideGapCountdown() {
   const el = dom.gapCountdown;
   if (el) el.hidden = true
@@ -206,19 +195,6 @@ function renderHistory() {
 }
 
 
-function showGapCountdown() {
-  // インターバル(3秒)中は画像を一切表示せず、中央に 3→2→1 を表示
-  if (dom.img) dom.img.hidden = true;
-  if (dom.gapCountdown) {
-    const n = Math.max(1, Math.ceil(state.remainMs / 1000));
-    dom.gapCountdown.hidden = false;
-    dom.gapCountdown.textContent = String(n);
-  }
-}
-
-function hideGapCountdown() {
-  if (dom.gapCountdown) dom.gapCountdown.hidden = true;
-}
 
 // ---- play control ----
 function enterStandby() {
