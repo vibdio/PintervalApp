@@ -64,7 +64,7 @@ input:disabled,select:disabled{opacity:0.6}
   display:flex;
   align-items:center;
   justify-content:center;
-  background:#0b0d12;
+  background:var(--bg);
   overflow:hidden;
 }
 
@@ -114,4 +114,25 @@ input:disabled,select:disabled{opacity:0.6}
   border: none;
   border-radius: 10px;
   cursor: pointer;
+}
+
+
+/* Ensure hidden attribute actually hides elements (override global img{display:block}) */
+[hidden]{ display:none !important; }
+
+/* gap countdown overlay */
+.gap-countdown {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 96px;
+  font-weight: bold;
+  color: #ffffff;
+  background: rgba(0,0,0,0.6);
+  z-index: 5;
+}
+.gap-countdown.hidden {
+  display: none;
 }
