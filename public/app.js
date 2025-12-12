@@ -71,6 +71,18 @@ function formatMMSS(msVal) {
   return `${mm}:${ss}`;
 }
 
+// ---- gap (interval) countdown UI ----
+function showGapCountdown() {
+  const el = dom.gapCountdown;
+  if (!el) return;
+  const n = Math.max(1, Math.ceil(state.remainMs / 1000));
+  el.textContent = String(n);
+  el.hidden = false;
+  // インターバル中は画像を一切表示しない
+  if (dom.img) dom.img.hidden = true;
+}
+
+
 function hideGapCountdown() {
   const el = dom.gapCountdown;
   if (el) el.hidden = true
