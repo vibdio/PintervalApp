@@ -41,31 +41,6 @@ const dom = {
 })();
 
 
-const HISTORY_STORAGE_KEY = 'pinterval_history_v1';
-
-// ---- localStorage (history) ----
-function loadHistoryFromStorage() {
-  try {
-    const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
-    if (!raw) return [];
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return [];
-    return arr.filter((x) => typeof x === 'string');
-  } catch (e) {
-    console.warn('Failed to load history from storage', e);
-    return [];
-  }
-}
-
-function saveHistoryToStorage(history) {
-  try {
-    const payload = Array.isArray(history) ? history.slice(-500) : [];
-    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(payload));
-  } catch (e) {
-    console.warn('Failed to save history to storage', e);
-  }
-}
-
 // ---- state ----
 const state = {
   phase: 'gap', // 'gap' | 'show'
@@ -73,7 +48,7 @@ const state = {
   items: /** @type {Array<{id:string,title:string,link:string|null,image:string}>} */ ([]),
   idx: -1,
   shownCount: 0,
-  history: /** @type {string[]} */ (loadHistoryFromStorage()),
+  history: /** @type {string[]} */ ([]),
   remainMs: 0,
   timerId: /** @type {number|null} */ (null),
 };
@@ -94,6 +69,22 @@ function formatMMSS(msVal) {
   const mm = String(Math.floor(total / 60)).padStart(2, '0');
   const ss = String(total % 60).padStart(2, '0');
   return `${mm}:${ss}`;
+}
+
+// ---- gap (interval) countdown UI ----
+function showGapCountdown() {
+  const el = dom.gapCountdown;
+  if (!el) return;
+  const n = Math.max(1, Math.ceil(state.remainMs / 1000));
+  el.textContent = String(n);
+  el.hidden = false;
+  // インターバル中は画像を一切表示しない
+  if (dom.img) dom.img.hidden = true;
+}
+
+function hideGapCountdown() {
+  const el = dom.gapCountdown;
+  if (el) el.hidden = true
 }
 
 function shuffle(array) {
@@ -214,8 +205,24 @@ function renderHistory() {
   dom.histCount.textContent = String(state.history.length);
 }
 
+
+function showGapCountdown() {
+  // インターバル(3秒)中は画像を一切表示せず、中央に 3→2→1 を表示
+  if (dom.img) dom.img.hidden = true;
+  if (dom.gapCountdown) {
+    const n = Math.max(1, Math.ceil(state.remainMs / 1000));
+    dom.gapCountdown.hidden = false;
+    dom.gapCountdown.textContent = String(n);
+  }
+}
+
+function hideGapCountdown() {
+  if (dom.gapCountdown) dom.gapCountdown.hidden = true;
+}
+
 // ---- play control ----
 function enterStandby() {
+  hideGapCountdown();
   state.mode = 'standby';
   if (state.timerId != null) {
     clearInterval(state.timerId);
@@ -238,31 +245,32 @@ function enterPlay() {
   state.remainMs = 3000;
   if (dom.countdown) dom.countdown.textContent = formatMMSS(state.remainMs);
 
+  showGapCountdown();
+
   if (state.timerId != null) clearInterval(state.timerId);
   state.timerId = setInterval(() => {
     state.remainMs -= 1000;
 
     if (state.phase === 'gap') {
-      // hide image, show big 3-2-1 countdown
-      if (dom.img) dom.img.style.visibility = 'hidden';
-      if (dom.gapCountdown) {
-        dom.gapCountdown.classList.remove('hidden');
-        dom.gapCountdown.textContent = Math.ceil(state.remainMs / 1000);
-      }
+      showGapCountdown();
+    } else {
+      // 表示中はギャップ用カウントダウンは常に非表示
+      if (dom.gapCountdown) dom.gapCountdown.hidden = true;
     }
 
     if (state.remainMs <= 0) {
       if (state.phase === 'gap') {
-        // switch to show phase
-        if (dom.gapCountdown) dom.gapCountdown.classList.add('hidden');
-        if (dom.img) dom.img.style.visibility = 'visible';
+        // gap -> show
+        hideGapCountdown();
         showNext(true);
         state.phase = 'show';
         state.remainMs = Number(dom.interval?.value || 30) * 1000;
+        if (dom.img) dom.img.hidden = false;
       } else {
-        // switch to gap phase
+        // show -> gap
         state.phase = 'gap';
         state.remainMs = 3000;
+        showGapCountdown();
       }
     }
 
@@ -272,6 +280,7 @@ function enterPlay() {
 
 
 function pausePlay() {
+  hideGapCountdown();
   if (state.timerId != null) {
     clearInterval(state.timerId);
     state.timerId = null;
@@ -281,6 +290,7 @@ function pausePlay() {
 }
 
 function stopPlay() {
+  hideGapCountdown();
   if (state.timerId != null) {
     clearInterval(state.timerId);
     state.timerId = null;
@@ -303,7 +313,6 @@ function showNext(resetCountdown) {
 
   if (item && item.image) {
     state.history.push(item.image);
-    saveHistoryToStorage(state.history);
     renderHistory();
   }
 
