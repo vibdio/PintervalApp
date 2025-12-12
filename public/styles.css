@@ -65,6 +65,7 @@ input:disabled,select:disabled{opacity:0.6}
   align-items:center;
   justify-content:center;
   background:var(--bg);
+  background:var(--bg);
   overflow:hidden;
 }
 
