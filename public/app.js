@@ -17,6 +17,28 @@ const dom = {
   histCount: document.getElementById('history-count'),
 };
 
+// Ensure viewer img stays hidden on standby and hides on real load error
+(function initViewerImageVisibility(){
+  const img = dom?.img;
+  if (!img) return;
+
+  // Standby: never show broken icon / alt text before we actually have an image
+  img.hidden = true;
+  img.alt = '';
+  img.removeAttribute('src');
+
+  img.addEventListener('load', () => {
+    img.hidden = false;
+  });
+
+  img.addEventListener('error', () => {
+    // Only show something if you have a dedicated error UI.
+    // For now, hide the image so the broken icon never appears.
+    img.hidden = true;
+  });
+})(); 
+
+
 const HISTORY_STORAGE_KEY = 'pinterval_history_v1';
 
 // ---- localStorage (history) ----
@@ -44,6 +66,8 @@ function saveHistoryToStorage(history) {
 
 // ---- state ----
 const state = {
+  phase: 'gap', // 'gap' | 'show'
+
   mode: 'standby', // 'standby' | 'play'
   items: /** @type {Array<{id:string,title:string,link:string|null,image:string}>} */ ([]),
   idx: -1,
@@ -160,10 +184,12 @@ function renderViewer() {
   if (!item) {
     dom.img.removeAttribute('src');
     dom.img.alt = '';
+    dom.img.hidden = true;
     return;
   }
   dom.img.src = item.image;
   dom.img.alt = item.title || 'Pinterest image';
+  dom.img.hidden = false;
 }
 
 function renderHistory() {
@@ -197,31 +223,34 @@ function enterStandby() {
   setLeftDisabled(false);
 }
 
+
 function enterPlay() {
   if (!state.items.length) return;
 
   state.mode = 'play';
   setLeftDisabled(true);
 
-  // ★ 最初の再生でも確実にセットする
-  const totalMs = ms(dom.interval?.value || 30);
-  state.remainMs = totalMs;
-  if (dom.countdown)
-    dom.countdown.textContent = formatMMSS(state.remainMs);
+  // start with 3s gap countdown
+  state.phase = 'gap';
+  state.remainMs = 3000;
+  if (dom.countdown) dom.countdown.textContent = formatMMSS(state.remainMs);
 
-  // タイマー初期化
-  if (state.timerId != null) {
-    clearInterval(state.timerId);
-  }
-
-  state.timerId = window.setInterval(() => {
+  if (state.timerId != null) clearInterval(state.timerId);
+  state.timerId = setInterval(() => {
     state.remainMs -= 1000;
-
     if (state.remainMs <= 0) {
-      showNext(true);
-    } else if (dom.countdown) {
-      dom.countdown.textContent = formatMMSS(state.remainMs);
+      if (state.phase === 'gap') {
+        // show image and start main interval
+        showNext(true);
+        state.phase = 'show';
+        state.remainMs = Number(dom.interval?.value || 30) * 1000;
+      } else {
+        // end of show -> next gap
+        state.phase = 'gap';
+        state.remainMs = 3000;
+      }
     }
+    if (dom.countdown) dom.countdown.textContent = formatMMSS(state.remainMs);
   }, 1000);
 }
 
@@ -355,6 +384,7 @@ window.addEventListener('keydown', (e) => {
 // defaults / init
 if (dom.interval) dom.interval.value = '30';
 renderHistory();
+renderViewer();
 loadBoards();
 
 // Optional: expose for debugging

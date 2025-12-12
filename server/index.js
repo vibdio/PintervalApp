@@ -82,7 +82,7 @@ app.get('/auth/callback', async (req, res) => {
     const data = JSON.parse(text);
     dynamicAccessToken = data.access_token;
 
-    return res.send("Token acquired!");
+    return res.redirect("https://pinterval.onrender.com");
   } catch (e) {
     console.error(e);
     res.status(500).send("OAuth error");
