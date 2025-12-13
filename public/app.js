@@ -9,6 +9,7 @@ const dom = {
   btnSearch: document.getElementById('btn-search'),
   viewer: document.getElementById('viewer'),
   img: document.getElementById('viewer-img'),
+  btnPrev: document.getElementById('btn-prev'),
   btnPlay: document.getElementById('btn-play'),
   btnStop: document.getElementById('btn-stop'),
   btnNext: document.getElementById('btn-next'),
@@ -211,7 +212,8 @@ function renderHistory() {
 // ---- play control ----
 function enterStandby() {
   hideGapCountdown();
-  state.mode = 'standby';
+  state.mode = 'paused';
+  updatePlayIcon();
   if (state.timerId != null) {
     clearInterval(state.timerId);
     state.timerId = null;
@@ -226,6 +228,7 @@ function enterPlay() {
   if (!state.items.length) return;
 
   state.mode = 'play';
+  updatePlayIcon();
   setLeftDisabled(true);
 
   // start with 3s gap countdown
@@ -274,6 +277,7 @@ function pausePlay() {
     state.timerId = null;
   }
   state.mode = 'standby';
+  updatePlayIcon();
   setLeftDisabled(false);
 }
 
@@ -284,6 +288,7 @@ function stopPlay() {
     state.timerId = null;
   }
   state.mode = 'standby';
+  updatePlayIcon();
   setLeftDisabled(false);
   state.remainMs = 0;
   if (dom.countdown) dom.countdown.textContent = '00:00';
@@ -360,6 +365,27 @@ if (dom.btnPlay) {
       pausePlay();
       return;
     }
+    if (state.mode === 'paused') {
+      state.mode = 'play';
+  updatePlayIcon();
+      setLeftDisabled(true);
+      // resume countdown without reset
+      if (state.timerId == null) {
+        state.timerId = setInterval(() => {
+          state.remainMs -= 1000;
+          if (state.phase === 'gap') { showGapCountdown(); } else { if (dom.gapCountdown) dom.gapCountdown.hidden = true; }
+          if (state.remainMs <= 0) {
+            if (state.phase === 'gap') {
+              hideGapCountdown(); showNext(true); state.phase = 'show'; state.remainMs = Number(dom.interval?.value||30)*1000;
+            } else {
+              showNext(true); state.phase = 'gap'; state.remainMs = 3000;
+            }
+          }
+          if (dom.countdown) dom.countdown.textContent = formatMMSS(state.remainMs);
+        },1000);
+      }
+      return;
+    }
 
     // 初回再生で items が無ければ自動準備
     if (!state.items.length) {
@@ -378,6 +404,8 @@ if (dom.btnStop) {
     stopPlay();
   });
 }
+
+if (dom.btnPrev) { dom.btnPrev.addEventListener('click',()=>showPrev()); }
 
 if (dom.btnNext) {
   dom.btnNext.addEventListener('click', () => {
@@ -408,3 +436,11 @@ loadBoards();
 window.__PINTERVAL_STATE__ = state;
 
 document.getElementById('loginBtn')?.addEventListener('click',()=>{window.location.href='https://pinterval.onrender.com/auth/login';});
+
+function updatePlayIcon(){
+  if(!dom.btnPlay) return;
+  // 再生中は一時停止（⏸）、一時停止中は再生（▶）
+  dom.btnPlay.textContent = (state.mode==='play') ? '⏸' : '▶';
+}
+
+function showPrev(){ if(!state.items.length) return; state.idx=(state.idx-1+state.items.length)%state.items.length; renderViewer(); }
