@@ -437,3 +437,66 @@ function updatePlayIcon(){
 }
 
 function showPrev(){ if(!state.items.length) return; state.idx=(state.idx-1+state.items.length)%state.items.length; renderViewer(); }
+
+// ---- mobile / portrait drawer UI ----
+(function initDrawerUI(){
+  const left = document.getElementById('left-col');
+  const right = document.getElementById('right-col');
+  const overlay = document.getElementById('drawer-overlay');
+  const btnOpenLeft = document.getElementById('btn-open-left');
+  const btnOpenRight = document.getElementById('btn-open-right');
+  const btnCloseLeft = document.getElementById('btn-close-left');
+  const btnCloseRight = document.getElementById('btn-close-right');
+
+  if (!left || !right || !overlay || !btnOpenLeft || !btnOpenRight) return;
+
+  const mq = window.matchMedia('(max-width: 900px), (max-aspect-ratio: 1/1)');
+
+  function closeAll() {
+    document.body.classList.remove('drawer-open-left', 'drawer-open-right');
+    overlay.hidden = true;
+  }
+
+  function openLeft() {
+    document.body.classList.add('drawer-open-left');
+    document.body.classList.remove('drawer-open-right');
+    overlay.hidden = false;
+  }
+
+  function openRight() {
+    document.body.classList.add('drawer-open-right');
+    document.body.classList.remove('drawer-open-left');
+    overlay.hidden = false;
+  }
+
+  // open
+  btnOpenLeft.addEventListener('click', () => {
+    if (!mq.matches) return;
+    openLeft();
+  });
+  btnOpenRight.addEventListener('click', () => {
+    if (!mq.matches) return;
+    openRight();
+  });
+
+  // close
+  overlay.addEventListener('click', closeAll);
+  btnCloseLeft?.addEventListener('click', closeAll);
+  btnCloseRight?.addEventListener('click', closeAll);
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeAll();
+  });
+
+  // 画面サイズが戻ったら強制的に閉じる（PC レイアウトへ復帰）
+  function syncForViewport() {
+    if (!mq.matches) closeAll();
+  }
+  try {
+    mq.addEventListener('change', syncForViewport);
+  } catch {
+    // Safari old
+    mq.addListener(syncForViewport);
+  }
+  syncForViewport();
+})();

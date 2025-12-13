@@ -11,6 +11,7 @@
   <div id="app" class="layout">
     <!-- 左カラム -->
     <aside class="col left" id="left-col">
+      <button class="drawer-close mobile-only" id="btn-close-left" type="button" aria-label="左メニューを閉じる">✕</button>
       <h1 class="app-title">Pinterval</h1>
       <div class="login-area">
         <button id="loginBtn" class="btn btn-primary">ログイン</button>
@@ -64,6 +65,10 @@
     <!-- 中央カラム（ビューワ） -->
     <main class="col center">
       <div id="viewer" class="viewer">
+        <div class="mobile-menubar" aria-label="メニュー">
+          <button class="hamburger" id="btn-open-left" type="button" aria-label="左メニューを開く">☰</button>
+          <button class="hamburger" id="btn-open-right" type="button" aria-label="右メニューを開く">☰</button>
+        </div>
         <img id="viewer-img" alt="" hidden>
         <div id="gap-countdown" class="gap-countdown" hidden>3</div>
         <div class="controls" id="controls">
@@ -76,7 +81,8 @@
     </main>
 
     <!-- ★★★ ここから右カラム ★★★ -->
-    <aside class="col right">
+    <aside class="col right" id="right-col">
+      <button class="drawer-close mobile-only" id="btn-close-right" type="button" aria-label="右メニューを閉じる">✕</button>
             <div class="countdown-wrap">
         <div class="countdown-label">次の画像まで</div>
         <div id="countdown" class="countdown">00:00</div>
@@ -90,6 +96,9 @@
       </div>
     </aside>
 
+  </div>
+
+  <div id="drawer-overlay" class="drawer-overlay" hidden></div>
 
   <script type="module" src="./eventBus.js"></script>
   <script type="module" src="./app.js"></script>
