@@ -45,7 +45,7 @@ const dom = {
 // ---- state ----
 const state = {
   phase: 'gap', // 'gap' | 'show'
-  mode: 'standby', // 'standby' | 'play'
+  mode: 'standby', // 'standby' | 'play' | 'paused'
   items: /** @type {Array<{id:string,title:string,link:string|null,image:string}>} */ ([]),
   idx: -1,
   shownCount: 0,
@@ -210,19 +210,43 @@ function renderHistory() {
 
 
 // ---- play control ----
-function enterStandby() {
-  hideGapCountdown();
-  state.mode = 'paused';
-  updatePlayIcon();
+function stopTimer() {
   if (state.timerId != null) {
     clearInterval(state.timerId);
     state.timerId = null;
   }
-  setLeftDisabled(false);
 }
 
+function tickCountdown() {
+  state.remainMs -= 1000;
 
+  if (state.phase === 'gap') {
+    showGapCountdown();
+  } else {
+    hideGapCountdown();
+  }
 
+  if (state.remainMs <= 0) {
+    if (state.phase === 'gap') {
+      // gap -> show
+      hideGapCountdown();
+      showNext(true); // 次の画像を表示し、表示用カウントダウンを開始
+      state.phase = 'show';
+    } else {
+      // show -> gap
+      state.phase = 'gap';
+      state.remainMs = 3000;
+      showGapCountdown();
+    }
+  }
+
+  if (dom.countdown) dom.countdown.textContent = formatMMSS(state.remainMs);
+}
+
+function startTimer() {
+  stopTimer();
+  state.timerId = setInterval(tickCountdown, 1000);
+}
 
 function enterPlay() {
   if (!state.items.length) return;
@@ -235,62 +259,46 @@ function enterPlay() {
   state.phase = 'gap';
   state.remainMs = 3000;
   if (dom.countdown) dom.countdown.textContent = formatMMSS(state.remainMs);
-
   showGapCountdown();
 
-  if (state.timerId != null) clearInterval(state.timerId);
-  state.timerId = setInterval(() => {
-    state.remainMs -= 1000;
-
-    if (state.phase === 'gap') {
-      showGapCountdown();
-    } else {
-      // 表示中はギャップ用カウントダウンは常に非表示
-      if (dom.gapCountdown) dom.gapCountdown.hidden = true;
-    }
-
-    if (state.remainMs <= 0) {
-      if (state.phase === 'gap') {
-        // gap -> show
-        hideGapCountdown();
-        showNext(true);
-        state.phase = 'show';
-        state.remainMs = Number(dom.interval?.value || 30) * 1000;
-        if (dom.img) dom.img.hidden = false;
-      } else {
-        // show -> gap
-        state.phase = 'gap';
-        state.remainMs = 3000;
-        showGapCountdown();
-      }
-    }
-
-    if (dom.countdown) dom.countdown.textContent = formatMMSS(state.remainMs);
-  }, 1000);
+  startTimer();
 }
 
-
 function pausePlay() {
-  hideGapCountdown();
-  if (state.timerId != null) {
-    clearInterval(state.timerId);
-    state.timerId = null;
-  }
-  state.mode = 'standby';
+  // 残り時間を保持したまま停止（再開で続きから）
+  stopTimer();
+  state.mode = 'paused';
   updatePlayIcon();
   setLeftDisabled(false);
+}
+
+function resumePlay() {
+  if (!state.items.length) return;
+
+  state.mode = 'play';
+  updatePlayIcon();
+  setLeftDisabled(true);
+
+  // 現在のフェーズに合わせてUIを整える（残り時間は保持）
+  if (state.phase === 'gap') {
+    showGapCountdown();
+  } else {
+    hideGapCountdown();
+  }
+  if (dom.countdown) dom.countdown.textContent = formatMMSS(state.remainMs);
+
+  startTimer();
 }
 
 function stopPlay() {
-  hideGapCountdown();
-  if (state.timerId != null) {
-    clearInterval(state.timerId);
-    state.timerId = null;
-  }
+  stopTimer();
   state.mode = 'standby';
   updatePlayIcon();
   setLeftDisabled(false);
+
+  state.phase = 'gap';
   state.remainMs = 0;
+  hideGapCountdown();
   if (dom.countdown) dom.countdown.textContent = '00:00';
 }
 
@@ -312,6 +320,9 @@ function showNext(resetCountdown) {
   if (resetCountdown) {
     state.remainMs = ms(dom.interval ? dom.interval.value : 30);
     if (dom.countdown) dom.countdown.textContent = formatMMSS(state.remainMs);
+    // 表示中はギャップ用カウントダウンは常に非表示
+    hideGapCountdown();
+    if (dom.img) dom.img.hidden = false;
   }
 }
 
@@ -366,37 +377,19 @@ if (dom.btnPlay) {
       return;
     }
     if (state.mode === 'paused') {
-      state.mode = 'play';
-  updatePlayIcon();
-      setLeftDisabled(true);
-      // resume countdown without reset
-      if (state.timerId == null) {
-        state.timerId = setInterval(() => {
-          state.remainMs -= 1000;
-          if (state.phase === 'gap') { showGapCountdown(); } else { if (dom.gapCountdown) dom.gapCountdown.hidden = true; }
-          if (state.remainMs <= 0) {
-            if (state.phase === 'gap') {
-              hideGapCountdown(); showNext(true); state.phase = 'show'; state.remainMs = Number(dom.interval?.value||30)*1000;
-            } else {
-              showNext(true); state.phase = 'gap'; state.remainMs = 3000;
-            }
-          }
-          if (dom.countdown) dom.countdown.textContent = formatMMSS(state.remainMs);
-        },1000);
-      }
+      resumePlay();
       return;
     }
 
-    // 初回再生で items が無ければ自動準備
+    // standby: 初回再生で items が無ければ自動準備
     if (!state.items.length) {
       await prepareAndPreview();
     }
 
     if (state.items.length) {
-      enterPlay();  // ★ここで確実にカウントダウン開始
+      enterPlay(); // ★ここで確実にカウントダウン開始
     }
   });
-
 }
 
 if (dom.btnStop) {
