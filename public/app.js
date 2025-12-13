@@ -269,7 +269,7 @@ function pausePlay() {
   stopTimer();
   state.mode = 'paused';
   updatePlayIcon();
-  setLeftDisabled(false);
+  setLeftDisabled(true); // 一時停止中も左カラム無効化
 }
 
 function resumePlay() {
@@ -277,7 +277,7 @@ function resumePlay() {
 
   state.mode = 'play';
   updatePlayIcon();
-  setLeftDisabled(true);
+  setLeftDisabled(true); // 再生中も左カラム無効化
 
   // 現在のフェーズに合わせてUIを整える（残り時間は保持）
   if (state.phase === 'gap') {
@@ -294,7 +294,7 @@ function stopPlay() {
   stopTimer();
   state.mode = 'standby';
   updatePlayIcon();
-  setLeftDisabled(false);
+  setLeftDisabled(false); // 停止時のみ有効化
 
   state.phase = 'gap';
   state.remainMs = 0;
@@ -358,7 +358,7 @@ async function prepareAndPreview() {
     setLeftDisabled(false);
     if (dom.btnSearch) {
       dom.btnSearch.disabled = false;
-      dom.btnSearch.textContent = '検索して準備';
+      dom.btnSearch.textContent = 'スタート';
     }
   }
 }
