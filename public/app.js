@@ -29,12 +29,12 @@ const dom = {
   board: document.getElementById('board'),
   order: document.getElementById('order'),
   interval: document.getElementById('interval'),
-  viewerCount: document.getElementById('viewer-count'),
+  gridCount: document.getElementById('grid-count'),
   toggleGrayscale: document.getElementById('toggle-grayscale'),
   counter: document.getElementById('counter'),
   btnSearch: document.getElementById('btn-search'),
   viewer: document.getElementById('viewer'),
-  img: document.getElementById('viewer-img'),
+  viewerGrid: document.getElementById('viewer-grid'),
   btnPrev: document.getElementById('btn-prev'),
   btnPlay: document.getElementById('btn-play'),
   btnStop: document.getElementById('btn-stop'),
@@ -47,30 +47,55 @@ const dom = {
   countdownBarContainer: document.querySelector('.countdown-bar-container'),
 };
 
+/** @type {HTMLImageElement[]} */
+let viewerImgs = [];
 
-// Ensure viewer img stays hidden on standby and hides on real load error
-(function initViewerImageVisibility(){
-  const img = dom?.img;
+function initViewerImageVisibility(img) {
   if (!img) return;
-
   // Standby: never show broken icon / alt text before we actually have an image
   img.hidden = true;
   img.alt = '';
   img.removeAttribute('src');
 
   img.addEventListener('load', () => {
-    // グレースケール変換のために一度プロキシ画像を読み込む場合は
+    // グレースケール変換のために一度プロキシ画像を読み込む場合は、
     // ここでは表示せず、変換後の画像が読み込めたタイミングで表示する。
     if (img.dataset?.grayPending === '1') return;
     img.hidden = false;
   });
 
   img.addEventListener('error', () => {
-    // Only show something if you have a dedicated error UI.
-    // For now, hide the image so the broken icon never appears.
+    // broken icon を出さない
     img.hidden = true;
   });
-})();
+}
+
+function getGridCount() {
+  const v = Number(dom.gridCount ? dom.gridCount.value : 1);
+  return [1, 4, 9, 16].includes(v) ? v : 1;
+}
+
+function applyGridLayout() {
+  if (!dom.viewerGrid) return;
+  const count = getGridCount();
+  const n = Math.max(1, Math.round(Math.sqrt(count))); // 1/2/3/4
+  dom.viewerGrid.style.setProperty('--grid-n', String(n));
+
+  // 画像要素を必要数に揃える
+  if (viewerImgs.length === count) return;
+
+  dom.viewerGrid.innerHTML = '';
+  viewerImgs = [];
+  for (let i = 0; i < count; i++) {
+    const img = document.createElement('img');
+    img.className = 'viewer-img';
+    img.decoding = 'async';
+    img.loading = 'eager';
+    initViewerImageVisibility(img);
+    dom.viewerGrid.appendChild(img);
+    viewerImgs.push(img);
+  }
+}
 
 
 // ---- state ----
@@ -84,13 +109,13 @@ const state = {
   history: /** @type {string[]} */ ([]),
   remainMs: 0,
   timerId: /** @type {number|null} */ (null),
-  viewerCount: 1,
 };
 
 function setLeftDisabled(disabled) {
   if (dom.board) dom.board.disabled = disabled;
   if (dom.order) dom.order.disabled = disabled;
   if (dom.interval) dom.interval.disabled = disabled;
+  if (dom.gridCount) dom.gridCount.disabled = disabled;
   if (dom.btnSearch) dom.btnSearch.disabled = disabled;
 }
 
@@ -213,7 +238,7 @@ function showGapCountdown() {
   el.textContent = String(n);
   el.hidden = false;
   // インターバル中は画像を一切表示しない
-  if (dom.img) dom.img.hidden = true;
+  for (const img of viewerImgs) img.hidden = true;
 }
 
 
@@ -306,91 +331,93 @@ async function fetchPinsForCurrentSelection() {
 
 // ---- rendering ----
 function renderViewer() {
-  if (!dom.viewer) return;
-  // 既存の画像を全てクリア
-  dom.viewer.querySelectorAll('.viewer-img-grid').forEach(el => el.remove());
+  applyGridLayout();
+  if (!dom.viewerGrid) return;
 
-  const count = state.viewerCount || 1;
-  const startIdx = Math.max(0, state.idx);
-  const items = state.items.slice(startIdx, startIdx + count);
+  const seq = ++viewerRenderSeq;
+  const count = getGridCount();
 
-  // グリッド用ラッパー
-  const grid = document.createElement('div');
-  grid.className = 'viewer-img-grid';
-  grid.style.display = 'grid';
-  const n = Math.ceil(Math.sqrt(count));
-  grid.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
-  grid.style.gridTemplateRows = `repeat(${n}, 1fr)`;
-  grid.style.gap = '4px';
-  grid.style.width = '100%';
-  grid.style.height = '100%';
-
-  for (let i = 0; i < count; ++i) {
-    const item = items[i];
-    const img = document.createElement('img');
-    img.className = 'viewer-img-grid';
-    img.style.width = '100%';
-    img.style.height = '100%';
-    img.style.objectFit = 'contain';
-    img.alt = item ? (item.title || 'Pinterest image') : '';
-    if (!item) {
+  // standby / 未選択時は全て非表示にして broken icon を出さない
+  if (!state.items.length || state.idx < 0) {
+    for (const img of viewerImgs) {
+      img.removeAttribute('src');
+      img.alt = '';
       img.hidden = true;
-      grid.appendChild(img);
+      img.dataset.grayPending = '0';
+      img.dataset.renderSeq = String(seq);
+    }
+    return;
+  }
+
+  // idx から count 枚を並べて表示
+  for (let i = 0; i < viewerImgs.length; i++) {
+    const imgEl = viewerImgs[i];
+    const item = state.items[(state.idx + i) % state.items.length];
+    if (!item || !item.image) {
+      imgEl.removeAttribute('src');
+      imgEl.alt = '';
+      imgEl.hidden = true;
+      imgEl.dataset.grayPending = '0';
+      imgEl.dataset.renderSeq = String(seq);
       continue;
     }
+
     const originalUrl = item.image;
+    imgEl.alt = item.title || 'Pinterest image';
+    imgEl.dataset.renderSeq = String(seq);
+
+    // カラー表示
     if (!state.grayscale) {
-      img.src = originalUrl;
-      img.hidden = false;
-    } else {
-      const cacheKey = `viewer:${originalUrl}`;
-      const cached = cacheGet(cacheKey);
-      if (cached) {
-        img.src = cached;
-        img.hidden = false;
-      } else {
-        img.dataset.grayPending = '1';
-        img.hidden = true;
-        img.addEventListener('load', async () => {
-          try {
-            if (!state.grayscale || !img.isConnected) return;
-            const grayObjUrl = await convertImgElToGrayscaleObjectUrl(img, { maxDim: 0 });
-            if (!state.grayscale || !img.isConnected) {
-              try { URL.revokeObjectURL(grayObjUrl); } catch {}
-              return;
-            }
-            cacheSet(cacheKey, grayObjUrl);
-            img.dataset.grayPending = '0';
-            img.src = grayObjUrl;
-            img.hidden = false;
-          } catch (e) {
-            console.warn('Grayscale conversion failed (viewer):', e);
-            img.dataset.grayPending = '0';
-            img.src = originalUrl;
-            img.hidden = false;
-          }
-        }, { once: true });
-        img.addEventListener('error', () => {
-          img.dataset.grayPending = '0';
-          img.src = originalUrl;
-          img.hidden = false;
-        }, { once: true });
-        img.src = buildProxyImageUrl(originalUrl);
-      }
+      imgEl.dataset.grayPending = '0';
+      imgEl.src = originalUrl;
+      imgEl.hidden = false;
+      continue;
     }
-    grid.appendChild(img);
+
+    // グレースケール表示（キャッシュがあれば即表示）
+    const cacheKey = `viewer:${originalUrl}`;
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      imgEl.dataset.grayPending = '0';
+      imgEl.src = cached;
+      imgEl.hidden = false;
+      continue;
+    }
+
+    // まずは同一オリジンのプロキシ画像を読み込み、その後 canvas で変換する
+    imgEl.dataset.grayPending = '1';
+    imgEl.hidden = true;
+
+    const onLoad = async () => {
+      if (imgEl.dataset.renderSeq !== String(seq)) return;
+      try {
+        const grayObjUrl = await convertImgElToGrayscaleObjectUrl(imgEl, { maxDim: 0 });
+        if (imgEl.dataset.renderSeq !== String(seq)) {
+          try { URL.revokeObjectURL(grayObjUrl); } catch {}
+          return;
+        }
+        cacheSet(cacheKey, grayObjUrl);
+        imgEl.dataset.grayPending = '0';
+        imgEl.src = grayObjUrl;
+      } catch (e) {
+        console.warn('Grayscale conversion failed (viewer):', e);
+        imgEl.dataset.grayPending = '0';
+        imgEl.src = originalUrl;
+        imgEl.hidden = false;
+      }
+    };
+
+    const onError = () => {
+      if (imgEl.dataset.renderSeq !== String(seq)) return;
+      imgEl.dataset.grayPending = '0';
+      imgEl.src = originalUrl;
+      imgEl.hidden = false;
+    };
+
+    imgEl.addEventListener('load', onLoad, { once: true });
+    imgEl.addEventListener('error', onError, { once: true });
+    imgEl.src = buildProxyImageUrl(originalUrl);
   }
-  dom.viewer.appendChild(grid);
-}
-// 同時表示数の選択肢変更時のイベント
-if (dom.viewerCount) {
-  dom.viewerCount.addEventListener('change', (e) => {
-    const val = Number(dom.viewerCount.value);
-    state.viewerCount = [1,4,9,16].includes(val) ? val : 1;
-    renderViewer();
-  });
-  // 初期値
-  state.viewerCount = Number(dom.viewerCount.value) || 1;
 }
 
 function renderHistory() {
@@ -599,18 +626,21 @@ function stopPlay() {
 
 function showNext(resetCountdown) {
   if (!state.items.length) return;
-  state.idx = (state.idx + 1) % state.items.length;
-  const item = state.items[state.idx];
+  const step = getGridCount();
+  // idx は「現在表示している先頭」を指す。次へは step 分進める。
+  state.idx = (state.idx + step) % state.items.length;
 
-  state.shownCount += 1;
+  state.shownCount += step;
   if (dom.counter) dom.counter.textContent = String(state.shownCount);
 
   renderViewer();
 
-  if (item && item.image) {
-    state.history.push(item.image);
-    renderHistory();
+  // 表示した分を履歴へ
+  for (let i = 0; i < Math.min(step, state.items.length); i++) {
+    const it = state.items[(state.idx + i) % state.items.length];
+    if (it && it.image) state.history.push(it.image);
   }
+  renderHistory();
 
   if (resetCountdown) {
     state.remainMs = ms(dom.interval ? dom.interval.value : 30);
@@ -618,7 +648,9 @@ function showNext(resetCountdown) {
     // 表示中はギャップ用カウントダウンは常に非表示
     hideGapCountdown();
     // グレースケール変換中（grayPending=1）の場合は、変換完了まで表示しない
-    if (dom.img && dom.img.dataset?.grayPending !== '1') dom.img.hidden = false;
+    for (const img of viewerImgs) {
+      if (img.dataset?.grayPending !== '1') img.hidden = false;
+    }
     updateCountdownBar();
   }
 }
@@ -644,7 +676,8 @@ async function prepareAndPreview() {
     }
 
     state.items = items;
-    state.idx = -1;
+    // 次回 showNext() で先頭が 0 になるよう、表示数分だけ戻しておく
+    state.idx = -getGridCount();
     state.shownCount = 0;
     if (dom.counter) dom.counter.textContent = '0';
     renderViewer();
@@ -737,6 +770,33 @@ if (dom.interval) {
   });
 }
 
+// --- 同時表示数（1/4/9/16）を localStorage で保存・復元 ---
+const GRIDCOUNT_KEY = 'pinterval_grid_count';
+if (dom.gridCount) {
+  const saved = localStorage.getItem(GRIDCOUNT_KEY);
+  if (saved && ['1','4','9','16'].includes(saved)) {
+    dom.gridCount.value = saved;
+  } else {
+    dom.gridCount.value = '1';
+  }
+  dom.gridCount.addEventListener('change', () => {
+    localStorage.setItem(GRIDCOUNT_KEY, dom.gridCount.value);
+
+    // 再生中はUIが無効化される想定だが、念のためガード
+    if (state.mode === 'play') return;
+
+    // 表示中なら「先頭 idx」を合わせる（次の showNext で飛ばないよう補正）
+    if (state.items.length && state.idx >= 0) {
+      // idx は常にグループ先頭に合わせる
+      const step = getGridCount();
+      state.idx = Math.floor(state.idx / step) * step;
+    } else if (state.items.length && state.idx < 0) {
+      state.idx = -getGridCount();
+    }
+    renderViewer();
+  });
+}
+
 // --- グレースケール設定を localStorage で保存・復元 ---
 {
   const saved = localStorage.getItem(GRAYSCALE_KEY);
@@ -772,7 +832,12 @@ function updatePlayIcon(){
   dom.btnPlay.textContent = (state.mode==='play') ? '⏸' : '▶';
 }
 
-function showPrev(){ if(!state.items.length) return; state.idx=(state.idx-1+state.items.length)%state.items.length; renderViewer(); }
+function showPrev(){
+  if(!state.items.length) return;
+  const step = getGridCount();
+  state.idx=(state.idx-step+state.items.length*1000)%state.items.length;
+  renderViewer();
+}
 
 // ---- mobile / portrait drawer UI ----
 (function initDrawerUI(){

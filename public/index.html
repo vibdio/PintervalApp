@@ -34,7 +34,6 @@
         </select>
       </div>
 
-
       <div class="field">
         <label for="interval">表示間隔（秒）</label>
         <select id="interval">
@@ -61,9 +60,9 @@
       </div>
 
       <div class="field">
-        <label for="viewer-count">同時表示数</label>
-        <select id="viewer-count">
-          <option value="1">1</option>
+        <label for="grid-count">同時表示数</label>
+        <select id="grid-count">
+          <option value="1" selected>1</option>
           <option value="4">4</option>
           <option value="9">9</option>
           <option value="16">16</option>
@@ -99,7 +98,7 @@
           <button class="hamburger" id="btn-open-left" type="button" aria-label="左メニューを開く">☰</button>
           <button class="hamburger" id="btn-open-right" type="button" aria-label="右メニューを開く">☰</button>
         </div>
-        <img id="viewer-img" alt="" hidden>
+        <div id="viewer-grid" class="viewer-grid" style="--grid-n:1" aria-label="ビューワ"></div>
         <div id="gap-countdown" class="gap-countdown" hidden>3</div>
         <div class="countdown-bar-container viewer-bar">
           <div id="countdown-bar" class="countdown-bar"></div>
